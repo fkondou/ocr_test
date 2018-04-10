@@ -106,5 +106,28 @@ namespace TEST_API
             srcImg.UnlockBits(srcDat);
             return dstImg;
         }
+        public static Image chGrayscaleImage(Image img)
+        {
+            Bitmap ret = new Bitmap(img.Width, img.Height);
+            Graphics g = Graphics.FromImage(ret);
+
+            System.Drawing.Imaging.ColorMatrix _cm =
+                        new System.Drawing.Imaging.ColorMatrix(
+                        new float[][] {
+                    new float[] { 0.299F, 0.299F, 0.299F, 0, 0},
+                    new float[] { 0.587F, 0.587F, 0.587F, 0, 0},
+                    new float[] { 0.114F, 0.114F, 0.114F, 0, 0},
+                    new float[] {0, 0, 0, 1, 0},
+                    new float[] {0, 0, 0, 0, 1}});
+            System.Drawing.Imaging.ImageAttributes ia = new System.Drawing.Imaging.ImageAttributes();
+
+            ia.SetColorMatrix(_cm);
+            g.DrawImage(img, new Rectangle(0, 0, img.Width, img.Height),
+                        0, 0, img.Width, img.Height, GraphicsUnit.Pixel, ia);
+
+            g.Dispose();
+            ia.Dispose();
+            return ret;
+        }
     }
 }

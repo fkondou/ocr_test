@@ -1,10 +1,10 @@
-﻿using System;
+﻿using OpenCvSharp;
+using System;
 using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Windows.Forms;
-using OpenCvSharp;
 
 namespace TEST_API
 {
@@ -15,19 +15,20 @@ namespace TEST_API
         Mat frame;
         VideoCapture capture;
         Bitmap captBmp;
+        Bitmap gray;
         Mat capMat;
         Graphics graphic;
 
         public Form1(VideoCapture c)
         {
             InitializeComponent();
-            //            int WIDTH = this.pictureBox.Width;
-            //            int HEIGHT = this.pictureBox.Height;
+            //int WIDTH = this.pictureBox.Width;
+            //int HEIGHT = this.pictureBox.Height;
             this.backgroundWorker.WorkerReportsProgress = true;
             this.backgroundWorker.WorkerSupportsCancellation = true;
             //カメラ画像取得
             capture = c;
-            //            capture = new VideoCapture(0);
+            // capture = new VideoCapture(0);
             if (!capture.IsOpened())
             {
                 MessageBox.Show("cannot open camera");
@@ -35,20 +36,20 @@ namespace TEST_API
                 return;
             }
             capture.FrameWidth = WIDTH;
-
             capture.FrameHeight = HEIGHT;
 
             //画像取得クラス
             frame = new Mat(HEIGHT, WIDTH, MatType.CV_8UC3);
             capMat = frame;
+
             //表示用にBitmap変換
             captBmp = new Bitmap(frame.Cols, frame.Rows, (int)frame.Step(), System.Drawing.Imaging.PixelFormat.Format24bppRgb, frame.Data);
             this.Width = WIDTH;
             this.Height = HEIGHT;
+
             //サイズ調整
             this.pictureBox.Width = frame.Cols;
             this.pictureBox.Height = frame.Rows;
-
 
             //Graphicsクラスで描画
             graphic = this.pictureBox.CreateGraphics();
@@ -59,14 +60,18 @@ namespace TEST_API
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
-            //Dispose
+            string _s = getTmpFileNm("gray");
+            if (gray != null) {
+            Bitmap _b = (Bitmap)gray.Clone();
+            _b.Save(_s);
+            _b.Dispose();
+        }
+            if (frame != null) frame.Dispose();
             if (capture != null) capture.Dispose();
             if (captBmp != null) captBmp.Dispose();
+//            if (gray != null) gray.Dispose();
+            if (capMat != null) capMat.Dispose();
             if (graphic != null) graphic.Dispose();
-            //wait for stop on back ground thread
-            this.backgroundWorker.CancelAsync();
-            while (this.backgroundWorker.IsBusy)
-                Application.DoEvents();
         }
 
         private void backgroundWorker_DoWork(object sender, DoWorkEventArgs e)
@@ -99,7 +104,9 @@ namespace TEST_API
         {
             try
             {
-                graphic.DrawImage(captBmp, 0, 0, frame.Cols, frame.Rows);
+                Bitmap _b = (Bitmap)captBmp.Clone();
+                graphic.DrawImage(_b, 0, 0, frame.Cols, frame.Rows);
+                _b.Dispose();
                 if ("".Equals(this.textBox1.Text))
                 {
                     this.textBox1.Text = "start";
@@ -114,18 +121,28 @@ namespace TEST_API
         private void pic_click(object sender, EventArgs e)
         {
 
-            doTest(capMat.Clone());
+            writeFacePoint(capMat.Clone());
+//            chGrayscaleImage(capMat.Clone());
 //            MessageBox.Show(doOcr());
         }
         private void Form1_Load(object sender, EventArgs e)
         {
 
         }
+        // execute tesseract-OCR
         private string doOcr()
         {
             string _f = getTmpFileNm("base");
             System.IO.File.Delete(_f);
             string _nf= doCorrect(captBmp);
+            using (Mat _m = OpenCvSharp.Extensions.BitmapConverter.ToMat(captBmp))
+            {
+                Mat _mg = new Mat();
+                Cv2.CvtColor(_m, _mg, ColorConversionCodes.BGR2GRAY);
+                Bitmap _nb = new Bitmap(_mg.Cols, _mg.Rows, (int)_mg.Step(), System.Drawing.Imaging.PixelFormat.Format24bppRgb, _mg.Data);
+                gray = (Bitmap)_nb.Clone();
+//                Bitmap.UnlockBits(_nb);
+            }
             return OCR.doOcr(_nf, "", 100, 10).Replace("\n", "");
         }
 
@@ -136,9 +153,9 @@ namespace TEST_API
             return  _tmp_path + _n + ".bmp";
         }
 
-        private void doTest(Mat _mat)
+        private void writeFacePoint(Mat _mat)
         {
-            var haarCascade = new CascadeClassifier("haarcascade_frontalface_default.xml");
+            using (var haarCascade = new CascadeClassifier("haarcascade_frontalface_default.xml"))
 
             using (var src = _mat)
             using (var gray = new Mat())
@@ -146,13 +163,17 @@ namespace TEST_API
                 var result = src.Clone();
                 Cv2.CvtColor(src, gray, ColorConversionCodes.BGR2GRAY);
 
-                // 顔検出
+                //検出
                 Rect[] faces = haarCascade.DetectMultiScale(
-                    gray, 1.08, 2, HaarDetectionType.FindBiggestObject, new OpenCvSharp.Size(50, 50));
-
-                // 検出した顔の位置に円を描画
+                    gray, 1.2, 2, HaarDetectionType.FindBiggestObject, new OpenCvSharp.Size(50, 50));
+                Bitmap _nb = new Bitmap(gray.Cols, gray.Rows, (int)gray.Step(), System.Drawing.Imaging.PixelFormat.Format24bppRgb, gray.Data);
+                Bitmap _tmp = (Bitmap)_nb.Clone();
+//                string _nf = getTmpFileNm("gray0");
+//                _tmp.Save(_nf);
+                //描画位置
                 foreach (Rect face in faces)
                 {
+                    //楕円用position
                     var center = new OpenCvSharp.Point
                     {
                         X = (int)(face.X + face.Width * 0.5),
@@ -163,64 +184,26 @@ namespace TEST_API
                         Width = (int)(face.Width * 0.5),
                         Height = (int)(face.Height * 0.5)
                     };
-                    Console.WriteLine("face.X:" + face.X);
-                    Console.WriteLine("face.Y:" + face.Y);
-                    Console.WriteLine("face.Width:" + face.Width);
-                    Console.WriteLine("face.Height:" + face.Height);
+                    //長方形用position
                     var center2 = new OpenCvSharp.Point
                     {
-                        X = (int)(face.X - (face.Width/face.X)),
-                        Y = (int)(face.Y - (face.Height/face.Y))
+                        X = (int)(face.X - (face.Width / face.X)),
+                        Y = (int)(face.Y - (face.Height / face.Y))
                     };
                     var center3 = new OpenCvSharp.Point
                     {
                         X = (int)(center2.X + face.Width),
                         Y = (int)(center2.Y + face.Height)
                     };
-                    Cv2.Ellipse(result, center, axes, 0, 0, 360, new Scalar(255, 0, 255), 4);
-                    Cv2.Rectangle(result, center2, center3, new Scalar(0, 255, 0), 4);
-
-//                    Cv2.Ellipse(result, center, axes, 0, 0, 360, new Scalar(255, 0, 255), 4);
+                    //楕円表示(scalar:BGR)
+                    Cv2.Ellipse(result, center, axes, 0, 0, 360, new Scalar(0, 0, 255), 4);
+                    //四角表示
+                    Cv2.Rectangle(result, center2, center3, new Scalar(255, 0, 0), 4);
                 }
-
                 using (new Window("result", result))
                 {
                     Cv2.WaitKey();
                 }
-                haarCascade.Dispose();
-            }
-        }
-        private Mat markPoint(Mat _mat)
-        {
-            var haarCascade = new CascadeClassifier("haarcascade_frontalface_default.xml");
-
-            using (var src = _mat)
-            using (var gray = new Mat())
-            {
-                var result = src.Clone();
-                Cv2.CvtColor(src, gray, ColorConversionCodes.BGR2GRAY);
-
-                // 顔検出
-                Rect[] faces = haarCascade.DetectMultiScale(
-                    gray, 1.08, 2, HaarDetectionType.FindBiggestObject, new OpenCvSharp.Size(50, 50));
-
-                // 検出した顔の位置に円を描画
-                foreach (Rect face in faces)
-                {
-                    var center = new OpenCvSharp.Point
-                    {
-                        X = (int)(face.X + face.Width * 0.5),
-                        Y = (int)(face.Y + face.Height * 0.5)
-                    };
-                    var axes = new OpenCvSharp.Size
-                    {
-                        Width = (int)(face.Width * 0.5),
-                        Height = (int)(face.Height * 0.5)
-                    };
-                    Cv2.Ellipse(result, center, axes, 0, 0, 360, new Scalar(0, 255, 255), 4, LineTypes.Link8);
-                }
-                haarCascade.Dispose();
-                return result;
             }
         }
         private string doCorrect(Bitmap _inB)
