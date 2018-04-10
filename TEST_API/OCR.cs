@@ -117,7 +117,9 @@ namespace TEST_API
                 _img = Image.FromFile(@_path);
                 string _fnm = System.IO.Path.GetFileName(@_path);
                 // adjast&constract
-                ChangeBitmap = clsImageUtils.AdjustSharpness(new Bitmap(clsImageUtils.chContrast(_img, _constract)), _sharp);
+                //                ChangeBitmap = clsImageUtils.AdjustSharpness(new Bitmap(clsImageUtils.chContrast(_img, _constract)), _sharp);
+                //gray scale & shapeness & constract
+                ChangeBitmap = clsImageUtils.AdjustSharpness(new Bitmap(clsImageUtils.AdjustSharpness(new Bitmap(clsImageUtils.chGrayscaleImage(_img)), _constract)), _sharp);
                 using (var tes = new Tesseract.TesseractEngine(@item.TessData, _lng))
                 {
                     // 加工
