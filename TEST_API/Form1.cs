@@ -144,6 +144,7 @@ namespace TEST_API
             using (var gray = new Mat())
             {
                 var result = src.Clone();
+                //グレイアウト加工
                 Cv2.CvtColor(src, gray, ColorConversionCodes.BGR2GRAY);
 
                 // 顔検出
@@ -153,6 +154,7 @@ namespace TEST_API
                 // 検出した顔の位置に円を描画
                 foreach (Rect face in faces)
                 {
+                    //サークルポイント
                     var center = new OpenCvSharp.Point
                     {
                         X = (int)(face.X + face.Width * 0.5),
@@ -167,6 +169,7 @@ namespace TEST_API
                     Console.WriteLine("face.Y:" + face.Y);
                     Console.WriteLine("face.Width:" + face.Width);
                     Console.WriteLine("face.Height:" + face.Height);
+                    //スクウェアポイント
                     var center2 = new OpenCvSharp.Point
                     {
                         X = (int)(face.X - (face.Width/face.X)),
@@ -177,10 +180,10 @@ namespace TEST_API
                         X = (int)(center2.X + face.Width),
                         Y = (int)(center2.Y + face.Height)
                     };
+                    //○表示
                     Cv2.Ellipse(result, center, axes, 0, 0, 360, new Scalar(255, 0, 255), 4);
+                    //□表示
                     Cv2.Rectangle(result, center2, center3, new Scalar(0, 255, 0), 4);
-
-//                    Cv2.Ellipse(result, center, axes, 0, 0, 360, new Scalar(255, 0, 255), 4);
                 }
 
                 using (new Window("result", result))

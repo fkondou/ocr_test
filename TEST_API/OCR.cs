@@ -10,8 +10,8 @@ namespace TEST_API
     static class OCR
     {
         private static Bitmap changeBitmap = null;
-        //言語ファイル
-//        const string LANG_PATH = @"C:\tessdata\";
+        //言語ファイル==>外だし(setting.xml)
+//        
 
         const string REST_SPI_URI = " http://westus.api.cognitive.microsoft.com/vision/v1.0/ocr";
 
